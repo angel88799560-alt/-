@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>老師，請說重點！</title>
+<style>
+:root{--bg:#f7f5f0;--card:#fff;--tx:#222;--mu:#777;--ac:#2f6f5e;--bd:#ddd8cc;--bad:#c0392b;--warn:#d9822b;--ok:#2f8f5e;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1c1d1f;--card:#27292c;--tx:#eee;--mu:#9a9a9a;--ac:#5fb59c;--bd:#3b3e42;--bad:#ef7d6f;--warn:#e8a55a;--ok:#6fcf9b;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1c1d1f;--card:#27292c;--tx:#eee;--mu:#9a9a9a;--ac:#5fb59c;--bd:#3b3e42;--bad:#ef7d6f;--warn:#e8a55a;--ok:#6fcf9b;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:17px/1.7 "Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif}
+main{max-width:560px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:26px;margin:8px 0 4px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:18px;margin:14px 0}
+.mu{color:var(--mu);font-size:15px}
+button{font:inherit;border:0;border-radius:10px;padding:12px 20px;background:var(--ac);color:#fff;cursor:pointer}
+button.g{background:transparent;color:var(--tx);border:1px solid var(--bd)}
+.row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.bar{height:8px;background:var(--bd);border-radius:6px;overflow:hidden}
+#fill{height:100%;width:100%;background:var(--ac);transition:width .1s linear}
+#fill.low{background:var(--bad)}
+textarea{width:100%;min-height:130px;font:inherit;font-size:19px;line-height:1.7;padding:12px;border-radius:10px;border:2px solid var(--ac);background:var(--bg);color:var(--tx);resize:none}
+.big{font-size:56px;font-weight:700;color:var(--ac);line-height:1.1}
+.rv{font-size:17px;line-height:1.9}
+.x{color:var(--bad);text-decoration:line-through}
+.w{color:var(--warn);text-decoration:underline wavy}
+.d{color:var(--mu);text-decoration:line-through;opacity:.6}
+.hide{display:none}
+</style>
+</head>
+<body>
+<main>
+<h1>📣 老師，請說重點！</h1>
+<p class="mu">練習把管教的話說得精簡、只陳述事實。</p>
+
+<section id="intro" class="card">
+<p><b>玩法</b></p>
+<p>共 6 題情境，每題 45 秒。對話框內已附原文，<b>不用打字，只能刪字</b>：選取要刪的字，按刪除或倒退鍵即可。保留事實與要求，刪掉情緒、責備與贅詞，最後按「送出」。</p>
+<button id="start">開始遊戲</button>
+</section>
+
+<section id="play" class="card hide">
+<div class="row"><b id="qn"></b><span id="sc" class="mu"></span></div>
+<p class="mu" id="ctx" style="margin:4px 0 10px"></p>
+<div class="bar"><div id="fill"></div></div>
+<p class="mu" style="margin:6px 0">剩餘 <b id="sec">45</b> 秒</p>
+<textarea id="ta" spellcheck="false" autocomplete="off"></textarea>
+<div class="row" style="margin-top:12px">
+<button class="g" id="reset">還原原文</button>
+<button id="send">送出</button>
+</div>
+</section>
+
+<section id="end" class="hide">
+<div class="card" style="text-align:center">
+<p class="mu" style="margin:0">平均精簡成功率</p>
+<div class="big"><span id="avg"></span>%</div>
+<p id="lvl" style="margin:6px 0 0"></p>
+</div>
+<div id="rev"></div>
+<p class="mu"><span class="x">紅字</span>＝誤刪了重點；<span class="w">橘字</span>＝漏刪了情緒詞；<span class="d">灰字</span>＝成功刪除。</p>
+<button id="again">再玩一次</button>
+</section>
+</main>
+<script>
+// {} 內為情緒/贅詞，其餘為事實與要求
+const Q=[
+{ctx:"情境一：學生本週第三次沒交數學作業",t:"{我真的快被你氣死了！}你這週第三次沒交數學作業，{到底有沒有把老師的話放在心上？}{真是太讓人失望了！}明天早上請交來。"},
+{ctx:"情境二：學生上課一直和同學講話",t:"{你怎麼每次都這麼吵？}剛才上課你一直跟隔壁同學講話，{害大家都被你影響，真的很沒禮貌！}下節課請安靜聽講。"},
+{ctx:"情境三：學生這個月第五次遲到",t:"{我簡直不敢相信你又遲到！}你這個月遲到五次，{一點責任感都沒有，我都替你的未來擔心。}明天請七點五十分前到校。"},
+{ctx:"情境四：學生下課在走廊追逐",t:"{你們是野猴子嗎？}剛才下課你在走廊奔跑追逐，{差點撞到別班同學，你到底有沒有腦袋？}下課請改用走的。"},
+{ctx:"情境五：學生上課滑手機",t:"{又是手機，你是不是不想上課了！}剛才你在課堂上滑手機，{我講了多少次你都當耳邊風，}請現在把手機交到講桌，放學後領回。"},
+{ctx:"情境六：學生又忘了帶課本",t:"{你怎麼老是這麼散漫？}你這學期第四次沒帶國語課本，{真的讓人很無言，}請先和隔壁同學共用，明天記得帶。"}
+];
+const $=id=>document.getElementById(id);
+let qi,res,chars,idx,prev,tm,t0,done;
+function parse(s){const o=[];s.split(/(\{[^}]*\})/).forEach(p=>{if(!p)return;const f=p[0]==='{';(f?p.slice(1,-1):p).split('').forEach(c=>o.push({c,f}))});return o}
+function show(id){['intro','play','end'].forEach(k=>$(k).classList.toggle('hide',k!==id))}
+function load(){
+ chars=parse(Q[qi].t);idx=chars.map((_,i)=>i);prev=chars.map(x=>x.c).join('');
+ $('ta').value=prev;$('qn').textContent='第 '+(qi+1)+' / '+Q.length+' 題';
+ $('ctx').textContent=Q[qi].ctx;$('sc').textContent='原文 '+prev.length+' 字';
+ done=false;t0=Date.now();clearInterval(tm);tick();tm=setInterval(tick,100);
+}
+function tick(){
+ const left=Math.max(0,45-(Date.now()-t0)/1000);
+ $('sec').textContent=Math.ceil(left);$('fill').style.width=(left/45*100)+'%';
+ $('fill').classList.toggle('low',left<=10);
+ if(left<=0)submit();
+}
+function submit(){
+ if(done)return;done=true;clearInterval(tm);
+ const keep=new Set(idx);let K=0,F=0,kK=0,rF=0;
+ chars.forEach((x,i)=>{if(x.f){F++;if(!keep.has(i))rF++}else{K++;if(keep.has(i))kK++}});
+ const score=Math.round(100*(rF/F)*(kK/K));
+ res.push({score,keep,rF,F,kK,K});
+ qi++;qi<Q.length?load():finish();
+}
+function finish(){
+ show('end');
+ const a=Math.round(res.reduce((s,r)=>s+r.score,0)/res.length);
+ $('avg').textContent=a;
+ $('lvl').textContent=a>=90?'重點大師！話短、事實清楚。':a>=70?'不錯，再刪掉一些情緒詞會更好。':a>=40?'還有不少情緒用語，或誤刪了重點。':'再試一次，先抓出事實與要求。';
+ $('rev').innerHTML=res.map((r,qn)=>{
+  const h=parse(Q[qn].t).map((x,i)=>{
+   const k=r.keep.has(i);
+   const cl=k?(x.f?'w':''):(x.f?'d':'x');
+   return cl?`<span class="${cl}">${x.c}</span>`:x.c}).join('');
+  return `<div class="card"><div class="row"><b>第 ${qn+1} 題</b><b>${r.score}%</b></div><p class="mu" style="margin:0">刪除情緒詞 ${r.rF}/${r.F} 字；保留重點 ${r.kK}/${r.K} 字</p><div class="rv">${h}</div></div>`}).join('');
+}
+function start(){qi=0;res=[];show('play');load()}
+$('start').onclick=start;$('again').onclick=start;
+$('send').onclick=submit;
+$('reset').onclick=()=>{idx=chars.map((_,i)=>i);prev=chars.map(x=>x.c).join('');$('ta').value=prev};
+$('ta').addEventListener('keydown',e=>{if(e.key==='Enter'||(e.key.length===1&&!e.ctrlKey&&!e.metaKey))e.preventDefault()});
+$('ta').addEventListener('input',e=>{
+ if(e.isComposing)return;
+ const n=$('ta').value,p=prev,d=p.length-n.length;
+ if(d>0){let i=0;while(i<n.length&&n[i]===p[i])i++;
+  if(p.slice(0,i)+p.slice(i+d)===n){idx.splice(i,d);prev=n;$('sc').textContent='剩 '+n.length+' / '+chars.length+' 字';return}}
+ $('ta').value=prev; // 只允許刪字，其他操作還原
+});
+</script>
+</body>
+</html>
